@@ -28,19 +28,20 @@ wss.on('connection', (ws) => {
                     if (rooms[roomId]) {
                         ws.roomId = roomId;
                         ws.isHost = false;
-                        ws.peerId = data.peer_id; // Unique ID from Godot
+                        ws.peerId = data.peer_id;
                         
                         rooms[roomId].peers[data.peer_id] = ws;
                         
-                        // Notify host that a peer wants to connect
+                        console.log(`[JOIN] Peer ${data.peer_id} wants to join Room ${roomId}. Notifying Host...`);
+                        
                         rooms[roomId].host.send(JSON.stringify({ 
                             type: "peer_joined", 
                             peer_id: data.peer_id 
                         }));
                         
                         ws.send(JSON.stringify({ type: "join_success", roomId }));
-                        console.log(`[JOIN] Peer ${data.peer_id} joined Room: ${roomId}`);
                     } else {
+                        console.log(`[JOIN FAIL] Room ${roomId} not found.`);
                         ws.send(JSON.stringify({ type: "error", message: "Room not found" }));
                     }
                     break;
