@@ -16,12 +16,18 @@ wss.on('connection', (ws) => {
             
             switch (data.type) {
                 case "host": {
-                    const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
+                    let roomId = data.roomId;
+                    
+                    // If no roomId requested, or we want a fresh one
+                    if (!roomId) {
+                        roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
+                    }
+                    
                     rooms[roomId] = { host: ws, peers: {} };
                     ws.roomId = roomId;
                     ws.isHost = true;
                     ws.send(JSON.stringify({ type: "host_success", roomId }));
-                    console.log(`[HOST] Room Created: ${roomId}`);
+                    console.log(`[HOST] Room Created/Claimed: ${roomId}`);
                     break;
                 }
 
