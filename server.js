@@ -57,8 +57,9 @@ wss.on('connection', (ws) => {
                         const targetPeer = room.peers[data.peer_id];
                         if (targetPeer) targetPeer.send(message);
                     } else {
-                        // Peer -> Host
-                        room.host.send(message);
+                        // Peer -> Host (Attach sender's peerId so host knows who it is)
+                        data.peer_id = ws.peerId; 
+                        room.host.send(JSON.stringify(data));
                     }
                     break;
                 }
