@@ -7,13 +7,15 @@ const rooms = {};
 console.log(`📡 Duck Signaling Server started on port ${PORT}`);
 
 wss.on('connection', (ws) => {
+    console.log("[CONN] New client connected");
+
     ws.on('message', (message) => {
         try {
-            const data = JSON.parse(message);
+            // CRITICAL: Convert buffer to string for some environments
+            const data = JSON.parse(message.toString());
             
             switch (data.type) {
                 case "host": {
-                    // Create a 6-character Room ID
                     const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
                     rooms[roomId] = { host: ws, peers: {} };
                     ws.roomId = roomId;
@@ -29,43 +31,44 @@ wss.on('connection', (ws) => {
                         ws.roomId = roomId;
                         ws.isHost = false;
                         ws.peerId = data.peer_id;
-                        
                         rooms[roomId].peers[data.peer_id] = ws;
                         
-                        console.log(`[JOIN] Peer ${data.peer_id} wants to join Room ${roomId}. Notifying Host...`);
+                        console.log(`[JOIN] Peer ${data.peer_id} joined Room ${roomId}. Notifying Host...`);
                         
                         rooms[roomId].host.send(JSON.stringify({ 
                             type: "peer_joined", 
                             peer_id: data.peer_id 
                         }));
-                        
                         ws.send(JSON.stringify({ type: "join_success", roomId }));
                     } else {
-                        console.log(`[JOIN FAIL] Room ${roomId} not found.`);
                         ws.send(JSON.stringify({ type: "error", message: "Room not found" }));
                     }
                     break;
                 }
 
                 case "signal": {
-                    // Relay WebRTC handshake (offer/answer/candidates)
                     const roomId = ws.roomId;
                     const room = rooms[roomId];
                     if (!room) return;
 
                     if (ws.isHost) {
-                        // Host -> Specific Peer
                         const targetPeer = room.peers[data.peer_id];
-                        if (targetPeer) targetPeer.send(message);
+                        if (targetPeer) targetPeer.send(JSON.stringify(data));
                     } else {
-                        // Peer -> Host (Attach sender's peerId so host knows who it is)
                         data.peer_id = ws.peerId; 
                         room.host.send(JSON.stringify(data));
                     }
                     break;
                 }
+                
+                case "ping": {
+                    ws.send(JSON.stringify({ type: "pong" }));
+                    break;
+                }
             }
-        } catch (e) { }
+        } catch (e) {
+            console.error("[ERROR] Failed to parse message:", e.message);
+        }
     });
 
     ws.on('close', () => {
